@@ -67,3 +67,4 @@ xhr.onreadystatechange = function() {
 // Begin request
 xhr.send( null );
 ```
+# hd-mc
