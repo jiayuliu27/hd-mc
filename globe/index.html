@@ -95,28 +95,67 @@
         position: absolute;
         bottom: 15px;
         left: 20px;
-        background: url(/globe/ce.png);
+        /* background: url(/globe/ce.png); */
       }
+.slidecontainer {
+    width: 100%;
+}
+
+.slider {
+    -webkit-appearance: none;
+    width: 100%;
+    height: 25px;
+    background: #d3d3d3;
+    outline: none;
+    opacity: 0.7;
+    -webkit-transition: .2s;
+    transition: opacity .2s;
+}
+
+.slider:hover {
+    opacity: 1;
+}
+
+.slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 25px;
+    height: 25px;
+    background: #4CAF50;
+    cursor: pointer;
+}
+
+.slider::-moz-range-thumb {
+    width: 25px;
+    height: 25px;
+    background: #4CAF50;
+    cursor: pointer;
+}
 
 
     </style>
   </head>
   <body>
 
-  <div id="container"></div>
+	<div class="slidecontainer">
+	<input type="range" min="1999" max="2018" value="50" class="slider" id="yearSlider">
+	</div>
+  <div id="container">
+	<div id="text"></div>
+  </div>
 
   <div id="info">
     <strong><a href="http://www.chromeexperiments.com/globe">WebGL Globe</a></strong> <span class="bull">&bull;</span> Created by the Google Data Arts Team <span class="bull">&bull;</span> Data acquired from <a href="http://sedac.ciesin.columbia.edu/gpw/">SEDAC</a>
   </div>
 
-  <div id="currentInfo">
+  <!-- <div id="currentInfo">
     <span id="year1990" class="year">1990</span>
     <span id="year1995" class="year">1995</span>
     <span id="year2000" class="year">2000</span>
-  </div>
+  </div> -->
 
   <div id="title">
-    World Population
+
   </div>
 
   <a id="ce" href="http://www.chromeexperiments.com/globe">
@@ -133,52 +172,102 @@
       Detector.addGetWebGLMessage();
     } else {
 
-      var years = ['1990','1995','2000'];
-      var container = document.getElementById('container');
-      var globe = new DAT.Globe(container);
+	var years = ['1990','1995','2000'];
+	var container = document.getElementById('container');
+	let colorsArr = {};
+	var globe = new DAT.Globe(container, {
+		colorFn: function(genus) {
+			return new THREE.Color(0xff0000);
+		}
+	});
 
       console.log(globe);
       var i, tweens = [];
-      
+
       var settime = function(globe, t) {
-        return function() {
-          new TWEEN.Tween(globe).to({time: t/years.length},500).easing(TWEEN.Easing.Cubic.EaseOut).start();
-          var y = document.getElementById('year'+years[t]);
-          if (y.getAttribute('class') === 'year active') {
-            return;
-          }
-          var yy = document.getElementsByClassName('year');
-          for(i=0; i<yy.length; i++) {
-            yy[i].setAttribute('class','year');
-          }
-          y.setAttribute('class', 'year active');
-        };
+        // return function() {
+        //   new TWEEN.Tween(globe).to({time: t/years.length},500).easing(TWEEN.Easing.Cubic.EaseOut).start();
+        //   var y = document.getElementById('year'+years[t]);
+        //   if (y.getAttribute('class') === 'year active') {
+        //     return;
+        //   }
+        //   var yy = document.getElementsByClassName('year');
+        //   for(i=0; i<yy.length; i++) {
+        //     yy[i].setAttribute('class','year');
+        //   }
+        //   y.setAttribute('class', 'year active');
+        // };
       };
-      
-      for(var i = 0; i<years.length; i++) {
-        var y = document.getElementById('year'+years[i]);
-        y.addEventListener('mouseover', settime(globe,i), false);
-      }
-      
-      var xhr;
+
+    //   for(var i = 0; i<years.length; i++) {
+    //     var y = document.getElementById('year'+years[i]);
+    //     y.addEventListener('mouseover', settime(globe,i), false);
+	//   }
+	var year = 1999;
+	let formattedData = {};
+	document.getElementById("yearSlider")
+			.oninput = function() {
+				year = this.value;
+				console.log('year', year);
+				document.getElementById("title").innerText = year;
+			}
+
+	document.getElementById("yearSlider")
+			.addEventListener("mousedown", (e) => {
+				console.log('down happened')
+				document.body.style.background= "#000000 url(/globe/loading.gif) center center no-repeat";
+			})
+
+	document.getElementById("yearSlider")
+			.addEventListener("mouseup", (e) => {
+				console.log('mouseup happened',formattedData)
+				globe.removeAllPoints();
+
+				window.data = formattedData[year];
+				globe.addData(formattedData[year], {format: "magnitude", name: year, animated: true });
+				globe.createPoints();
+				// settime(globe,0)();
+				globe.animate();
+				document.body.style.backgroundImage = 'none'; // remove loading
+				// xhr = new XMLHttpRequest();
+				// xhr.open("GET", "/globe/data/latLng.json", true);
+				// 	console.log('making request1')
+				// xhr.onreadystatechange = function(e) {
+				// 	console.log('making request')
+				// 	if (xhr.readyState === 4 && xhr.status === 200) {
+				// 		console.log('request succeeded')
+				// 		let data = JSON.parse(xhr.responseText);
+				// 		window.data = data;
+				// 	} else {
+				// 		console.log('here',e,xhr)
+				// 	}
+				// };
+				// xhr.send(null);
+			});
+
+
+      var xhr, minYear, maxYear;
       TWEEN.start();
-      
-      
+
+
       xhr = new XMLHttpRequest();
-      xhr.open('GET', '/globe/population909500.json', true);
+      xhr.open('GET', '/globe/data/ornithology_data.json', true);
       xhr.onreadystatechange = function(e) {
-        if (xhr.readyState === 4) {
-          if (xhr.status === 200) {
+        if (xhr.readyState === 4 && xhr.status === 200) {
             var data = JSON.parse(xhr.responseText);
-            window.data = data;
-            for (i=0;i<data.length;i++) {
-              globe.addData(data[i][1], {format: 'magnitude', name: data[i][0], animated: true});
-            }
+			window.data = data;
+			data.forEach((entry) => {
+				entry.year = entry.year || 2018;
+				formattedData[entry.year] ?
+					formattedData[entry.year].push(entry) :
+					formattedData[entry.year] = [entry];
+			});
+			globe.addData(data, {format: 'magnitude', name: 'year', animated: true});
+			console.log('formattedData ', formattedData)
             globe.createPoints();
-            settime(globe,0)();
+            // settime(globe,0)();
             globe.animate();
             document.body.style.backgroundImage = 'none'; // remove loading
-          }
         }
       };
       xhr.send(null);
