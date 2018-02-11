@@ -71,8 +71,8 @@ DAT.Globe = function(container, opts) {
     };
 
     var camera, scene, renderer, w, h, raycaster, intersected, point;
-	var mesh, atmosphere, pointsArr = [];
-	// raycaster.params.Points.threshold = threshold;
+    var mesh, atmosphere, pointsArr = [];
+    // raycaster.params.Points.threshold = threshold;
 
 
     var overRenderer;
@@ -107,7 +107,7 @@ DAT.Globe = function(container, opts) {
     var PI_HALF = Math.PI / 2;
 
     function init() {
-		point = [];
+        point = [];
 
         container.style.color = '#fff';
         container.style.font = '13px/20px Arial, sans-serif';
@@ -161,9 +161,9 @@ DAT.Globe = function(container, opts) {
         geometry = new THREE.BoxGeometry(0.75, 0.75, 1);
         geometry.applyMatrix(new THREE.Matrix4().makeTranslation(0, 0, -0.5));
 
-		point = new THREE.Mesh(geometry);
+        point = new THREE.Mesh(geometry);
 
-		raycaster = new THREE.Raycaster();
+        raycaster = new THREE.Raycaster();
 
         renderer = new THREE.WebGLRenderer({
             antialias: true
@@ -172,9 +172,9 @@ DAT.Globe = function(container, opts) {
 
         renderer.domElement.style.position = 'absolute';
 
-		container.appendChild(renderer.domElement);
+        container.appendChild(renderer.domElement);
 
-		container.addEventListener('mousemove', onMouseMovePointsInteraction, false);
+        container.addEventListener('mousemove', onMouseMovePointsInteraction, false);
 
         container.addEventListener('mousedown', onMouseDown, false);
 
@@ -202,29 +202,27 @@ DAT.Globe = function(container, opts) {
         if (opts.format === 'magnitude') {
             step = 3;
             colorFnWrapper = function(data, i) {
-				// console.log(data['color'])
-                return colorFn(data['color']);
+                return colorFn(data.genus);
             }
         } else if (opts.format === 'legend') {
             step = 4;
-            colorFnWrapper = function(data, i) {
-                return colorFn(data['color']);
-            }
+            // colorFnWrapper = function(data, i) {
+            //     return colorFn(data['color']);
+            // }
         } else {
             throw ('error: format not supported: ' + opts.format);
         }
 
         if (opts.animated) {
-			console.log('data', data);
             if (this._baseGeometry === undefined) {
-				this._baseGeometry = new THREE.Geometry();
-				data.forEach(entry => {
-					lat = entry['lat'];
-					lng = entry['lng'];
-					sze = 0;
-					clr = colorFnWrapper(entry);
-					addPoint(lat, lng, sze, clr,this._baseGeometry);
-				});
+                this._baseGeometry = new THREE.Geometry();
+                data.forEach(entry => {
+                    lat = entry.lat;
+                    lng = entry.lng;
+                    sze = 0;
+                    clr = colorFnWrapper(entry);
+                    addPoint(lat, lng, sze, clr, this._baseGeometry, entry.genus);
+                });
             }
             if (this._morphTargetId === undefined) {
                 this._morphTargetId = 0;
@@ -234,14 +232,13 @@ DAT.Globe = function(container, opts) {
             opts.name = opts.name || 'morphTarget' + this._morphTargetId;
         }
         var subgeo = new THREE.Geometry();
-		data.forEach(entry => {
-			lat = entry['lat'];
-			lng = entry['lng'];
-			sze = entry['size'] || 1000;
-			clr = colorFnWrapper(entry);
-			console.log('using ', lat,lng, sze,clr)
-			addPoint(lat, lng, sze, clr, subgeo);
-		});
+        data.forEach(entry => {
+            lat = entry.lat;
+            lng = entry.lng;
+            sze = entry.size || 1000;
+            clr = colorFnWrapper(entry);
+            addPoint(lat, lng, sze, clr, subgeo, entry.genus);
+        });
         if (opts.animated) {
             this._baseGeometry.morphTargets.push({
                 'name': opts.name,
@@ -276,18 +273,20 @@ DAT.Globe = function(container, opts) {
                     vertexColors: THREE.FaceColors,
                     morphTargets: true
                 }));
-			}
-			point.name = 'lines'
-			pointsArr.push(point);
-			console.log('pointsArr after push ', pointsArr)
+            }
+            point.name = 'lines';
+            pointsArr.push(point);
             scene.add(point);
         }
     }
 
-    function addPoint(lat, lng, size, color, subgeo) {
+    function addPoint(lat, lng, size, color, subgeo, genus) {
 
         var phi = (90 - lat) * Math.PI / 180;
         var theta = (180 - lng) * Math.PI / 180;
+
+        point.genus = genus;
+        point.color = color;
 
         point.position.x = 200 * Math.sin(phi) * Math.cos(theta);
         point.position.y = 200 * Math.cos(phi);
@@ -336,50 +335,47 @@ DAT.Globe = function(container, opts) {
 
         target.y = target.y > PI_HALF ? PI_HALF : target.y;
         target.y = target.y < -PI_HALF ? -PI_HALF : target.y;
-	}
+    }
 
-	function onMouseMovePointsInteraction(e) {
-		e.preventDefault();
-		// calculate mouse position in normalized device coordinates
-		// (-1 to +1) for both components window.innerHeight
-		// .mouse.x = ( (event.clientX) /  window.innerWidth ) * 2 - 1;
-		// this.mouse.y = - ( (event.clientY) / document.getElementById("container").offsetHeight) * 2 + 1;
-		// let point = point || [];
-		var mouseVector = new THREE.Vector3(
-			( e.clientX / window.innerWidth ) * 2 - 1,
-		- ( (event.clientY) / document.getElementById("container").offsetHeight) * 2 + 1,
-			1 );
+    function onMouseMovePointsInteraction(e) {
+        e.preventDefault();
+        // calculate mouse position in normalized device coordinates
+        // (-1 to +1) for both components window.innerHeight
+        // .mouse.x = ( (event.clientX) /  window.innerWidth ) * 2 - 1;
+        // this.mouse.y = - ( (event.clientY) / document.getElementById("container").offsetHeight) * 2 + 1;
+        // let point = point || [];
+        var mouseVector = new THREE.Vector3(
+            (e.clientX / window.innerWidth) * 2 - 1, -(e.clientY / window.innerHeight) * 2 + 1,
+            1);
 
-		// let mouseVector = new THREE.Vector3(e.clientX, e.clientY, 1);
+        // let mouseVector = new THREE.Vector3(e.clientX, e.clientY, 1);
 
-			console.log('mouse evt ', e, ' ', (e.clientX / window.innerWidth)*2-1)
-		raycaster.setFromCamera(mouseVector, camera);
-		intersections = raycaster.intersectObjects( point );
-		console.log('pointsArr ', pointsArr,intersections)
-		numObjects = pointsArr.length;
-		if ( intersections.length > 0 ) {
-        if ( intersected != intersections[ 0 ].object ) {
-          if ( intersected ) intersected.material.color.setRGB(intersected.colors[0],intersected.colors[1],intersected.colors[2]);
-          //get the hover word
-          intersected = intersections[ 0 ].object;
-          //change the color when hover
-          intersected.material.color.setHex( 0xffffff);
-          //add the text
-          var text = document.getElementById("text");
-          text.innerHTML = intersected.word.toUpperCase();
-        //   document.getElementById('container').appendChild(text);
+        raycaster.setFromCamera(mouseVector, camera);
+        intersections = raycaster.intersectObjects(scene.children);
+        numObjects = scene.children.length;
+
+        if (intersections.length > 0) {
+            if (intersected != intersections[0].object) {
+                if (intersected) intersected.material.color = intersected.color;
+                //get the hover word
+                intersected = intersections[0].object;
+                //change the color when hover
+                intersected.material.color.setHex(0xffffff);
+                //add the text
+                var text = document.getElementById("text");
+                text.innerText = intersected.genus.toUpperCase();
+            }
+            document.body.style.cursor = 'pointer';
+        } else if (intersected) {
+            //change the color back
+            intersected.material.color = intersected.color;
+            intersected = null;
+            //reset the text
+            var text = document.getElementById("text");
+            text.innerHTML = "";
+            document.body.style.cursor = 'auto';
         }
-        document.body.style.cursor = 'pointer';
-      } else if ( intersected ) {
-        //change the color back
-        intersected.material.color.setRGB(intersected.colors[0],intersected.colors[1],intersected.colors[2]);
-        intersected = null;
-        //reset the text
-        var text = document.getElementById("text");
-        text.innerHTML = "";
-        document.body.style.cursor = 'auto';
-      }
-	}
+    }
 
     // }
 
@@ -445,11 +441,11 @@ DAT.Globe = function(container, opts) {
         camera.position.y = distance * Math.sin(rotation.y);
         camera.position.z = distance * Math.cos(rotation.x) * Math.cos(rotation.y);
 
-		camera.lookAt(mesh.position);
+        camera.lookAt(mesh.position);
 
-		// raycaster.setFromCamera( mouse, camera );
-		// var intersections = raycaster.intersectObjects( pointclouds );
-		// intersection = ( intersections.length ) > 0 ? intersections[ 0 ] : null;
+        // raycaster.setFromCamera( mouse, camera );
+        // var intersections = raycaster.intersectObjects( pointclouds );
+        // intersection = ( intersections.length ) > 0 ? intersections[ 0 ] : null;
 
         renderer.render(scene, camera);
     }
@@ -484,19 +480,19 @@ DAT.Globe = function(container, opts) {
         }
         point.morphTargetInfluences[index] = leftover;
         this._time = t;
-	});
+    });
 
-	// Create this function
-	function removeAllPoints() {
-		pointsArr = [];
-		scene.remove(scene.getObjectByName("lines"));
-	}
+    // Create this function
+    function removeAllPoints() {
+        pointsArr = [];
+        scene.remove(scene.getObjectByName("lines"));
+    }
 
     this.addData = addData;
     this.createPoints = createPoints;
     this.renderer = renderer;
-	this.scene = scene;
-	this.removeAllPoints = removeAllPoints;
+    this.scene = scene;
+    this.removeAllPoints = removeAllPoints;
 
     return this;
 
